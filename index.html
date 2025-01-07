@@ -17,7 +17,10 @@
                 window.voiceflow.chat.load({
                     verify: { projectID: '674ffbb4f8ed29bcbd9e2182' },
                     url: 'https://general-runtime.voiceflow.com',
-                    versionID: 'production'
+                    versionID: 'production',
+                    extend: (runtime) => {
+                        runtime.addExtension(ImageUploadExtension);
+                    }
                 });
             }
             v.src = "https://cdn.voiceflow.com/widget/bundle.mjs"; 
