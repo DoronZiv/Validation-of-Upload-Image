@@ -6,75 +6,18 @@
     <title>Voiceflow Chat with Image Upload</title>
 </head>
 <body>
+    <!-- Load extensions.js first -->
+    <script src="extensions.js"></script>
+
     <!-- Voiceflow Chat Widget -->
     <script type="text/javascript">
-        // Define the extension first
-        const ImageUploadExtension = {
-            name: 'ImageUpload',
-            type: 'response',
-            match: ({ trace }) => {
-                console.log('Full trace object:', JSON.stringify(trace, null, 2));
-                
-                // Match on custom command type
-                const isMatch = trace?.type === 'custom' && 
-                              trace?.payload?.command === 'image_upload';
-                
-                console.log('Is match?', isMatch);
-                return isMatch;
-            },
-            render: ({ trace, element }) => {
-                console.log('Rendering image upload...');
-                const uploadContainer = document.createElement('div');
-                uploadContainer.innerHTML = `
-                    <div style="padding: 10px;">
-                        <input type="file" accept="image/*" id="imageInput">
-                        <button type="button" id="uploadButton" style="display: none;">Upload</button>
-                    </div>
-                `;
-                
-                const fileInput = uploadContainer.querySelector('#imageInput');
-                const uploadButton = uploadContainer.querySelector('#uploadButton');
-                
-                fileInput.onchange = () => {
-                    if (fileInput.files.length > 0) {
-                        uploadButton.style.display = 'block';
-                    }
-                };
-                
-                uploadButton.onclick = () => {
-                    const file = fileInput.files[0];
-                    const reader = new FileReader();
-                    reader.onload = (e) => {
-                        window.voiceflow.chat.interact({
-                            type: 'complete',
-                            payload: {
-                                base64: e.target.result,
-                                name: file.name,
-                                type: file.type
-                            }
-                        });
-                    };
-                    reader.readAsDataURL(file);
-                };
-                
-                element.appendChild(uploadContainer);
-            }
-        };
-
-        // Load Voiceflow
         (function(d, t) {
             var v = d.createElement(t), s = d.getElementsByTagName(t)[0];
             v.onload = function() {
-                console.log('Voiceflow script loaded');
                 window.voiceflow.chat.load({
                     verify: { projectID: '674ffbb4f8ed29bcbd9e2182' },
                     url: 'https://general-runtime.voiceflow.com',
-                    versionID: 'production',
-                    extend: (runtime) => {
-                        console.log('Adding extension...');
-                        runtime.addExtension(ImageUploadExtension);
-                        console.log('Extension added successfully');
-                    }
+                    versionID: 'production'
                 });
             }
             v.src = "https://cdn.voiceflow.com/widget/bundle.mjs"; 

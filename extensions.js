@@ -1,176 +1,50 @@
 const ImageUploadExtension = {
-  name: 'ImageUpload',
+  name: 'image_upload',
   type: 'response',
   match: ({ trace }) => {
-    console.log('Checking trace:', trace);
-    const isMatch = trace?.type === 'ext_image_upload' || 
-                   trace?.payload?.name === 'ext_image_upload' ||
-                   trace?.payload?.type === 'ext_image_upload';
+    console.log('Full trace object:', JSON.stringify(trace, null, 2));
+    const isMatch = trace?.type === 'component' && 
+                   trace?.payload?.name === 'image_upload';
     console.log('Is match?', isMatch);
     return isMatch;
   },
   render: ({ trace, element }) => {
+    console.log('Rendering image upload...');
     const uploadContainer = document.createElement('div');
     uploadContainer.innerHTML = `
-      <style>
-        .image-upload-container {
-          width: 100%;
-          padding: 10px;
-        }
-        
-        .image-upload-label {
-          display: inline-block;
-          padding: 10px 20px;
-          background: linear-gradient(to right, #2e6ee1, #2e7ff1);
-          color: white;
-          border-radius: 5px;
-          cursor: pointer;
-          margin-bottom: 10px;
-        }
-        
-        .image-upload-input {
-          display: none;
-        }
-        
-        .preview-image {
-          max-width: 200px;
-          max-height: 200px;
-          display: none;
-          margin-top: 10px;
-        }
-        
-        .upload-button {
-          background: linear-gradient(to right, #2e6ee1, #2e7ff1);
-          border: none;
-          color: white;
-          padding: 10px 20px;
-          border-radius: 5px;
-          cursor: pointer;
-          display: none;
-        }
-        
-        .upload-progress {
-          width: 100%;
-          height: 4px;
-          background-color: #f0f0f0;
-          border-radius: 2px;
-          margin: 10px 0;
-        }
-        
-        .progress-bar {
-          width: 0%;
-          height: 100%;
-          background: linear-gradient(to right, #2e6ee1, #2e7ff1);
-          border-radius: 2px;
-          transition: width 0.3s ease;
-          animation: progress 1s infinite linear;
-        }
-        
-        @keyframes progress {
-          0% {
-            width: 0%;
-          }
-          100% {
-            width: 100%;
-          }
-        }
-        
-        .error-message {
-          font-size: 14px;
-          padding: 5px 0;
-        }
-      </style>
-      
-      <div class="image-upload-container">
-        <label class="image-upload-label">
-          Choose Image
-          <input type="file" class="image-upload-input" accept="image/*">
-        </label>
-        <img class="preview-image">
-        <div class="upload-progress" style="display: none;">
-          <div class="progress-bar"></div>
-        </div>
-        <div class="error-message" style="display: none; color: red; margin-top: 10px;"></div>
-        <button class="upload-button">Upload Image</button>
+      <div style="padding: 10px;">
+        <input type="file" accept="image/*" id="imageInput">
+        <button type="button" id="uploadButton" style="display: none;">Upload</button>
       </div>
     `;
-
-    const fileInput = uploadContainer.querySelector('.image-upload-input');
-    const previewImage = uploadContainer.querySelector('.preview-image');
-    const uploadButton = uploadContainer.querySelector('.upload-button');
-    const progressDiv = uploadContainer.querySelector('.upload-progress');
-    const errorDiv = uploadContainer.querySelector('.error-message');
-
-    fileInput.addEventListener('change', (event) => {
-      const file = event.target.files[0];
-      if (file) {
-        errorDiv.style.display = 'none';
-        
-        if (file.size > 5 * 1024 * 1024) {
-          errorDiv.textContent = 'File size must be less than 5MB';
-          errorDiv.style.display = 'block';
-          return;
-        }
-
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          previewImage.src = e.target.result;
-          previewImage.style.display = 'block';
-          uploadButton.style.display = 'block';
-        };
-        reader.onerror = () => {
-          errorDiv.textContent = 'Error reading file';
-          errorDiv.style.display = 'block';
-        };
-        reader.readAsDataURL(file);
+    
+    const fileInput = uploadContainer.querySelector('#imageInput');
+    const uploadButton = uploadContainer.querySelector('#uploadButton');
+    
+    fileInput.onchange = () => {
+      if (fileInput.files.length > 0) {
+        uploadButton.style.display = 'block';
       }
-    });
-
-    uploadButton.addEventListener('click', () => {
+    };
+    
+    uploadButton.onclick = () => {
       const file = fileInput.files[0];
-      if (file) {
-        progressDiv.style.display = 'block';
-        uploadButton.disabled = true;
-
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const base64Image = e.target.result;
-          
-          try {
-            console.log('Sending image data to Voiceflow...');
-            window.voiceflow.chat.interact({
-              type: 'complete',
-              payload: {
-                base64: base64Image,
-                name: file.name,
-                type: file.type
-              },
-            });
-            console.log('Image data sent successfully');
-            
-            uploadButton.style.display = 'none';
-            progressDiv.style.display = 'none';
-          } catch (error) {
-            console.error('Error sending image:', error);
-            errorDiv.textContent = 'Error uploading image';
-            errorDiv.style.display = 'block';
-            uploadButton.disabled = false;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        window.voiceflow.chat.interact({
+          type: 'complete',
+          payload: {
+            base64: e.target.result,
+            name: file.name,
+            type: file.type
           }
-        };
-        
-        reader.onerror = () => {
-          errorDiv.textContent = 'Error processing file';
-          errorDiv.style.display = 'block';
-          uploadButton.disabled = false;
-          progressDiv.style.display = 'none';
-        };
-        
-        reader.readAsDataURL(file);
-      }
-    });
-
+        });
+      };
+      reader.readAsDataURL(file);
+    };
+    
     element.appendChild(uploadContainer);
-  },
+  }
 };
 
 // Register extension when Voiceflow is ready
