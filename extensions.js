@@ -1,4 +1,3 @@
-// Remove the export and define directly
 const ImageUploadExtension = {
   name: 'ImageUpload',
   type: 'response',
@@ -140,11 +139,9 @@ const ImageUploadExtension = {
             window.voiceflow.chat.interact({
               type: 'complete',
               payload: {
-                data: {
-                  base64: base64Image,
-                  name: file.name,
-                  type: file.type
-                }
+                base64: base64Image,
+                name: file.name,
+                type: file.type
               },
             });
             console.log('Image data sent successfully');
