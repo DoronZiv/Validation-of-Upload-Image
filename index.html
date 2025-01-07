@@ -6,11 +6,71 @@
     <title>Voiceflow Chat with Image Upload</title>
 </head>
 <body>
-    <!-- Load extensions.js first -->
-    <script src="extensions.js"></script>
-
     <!-- Voiceflow Chat Widget -->
     <script type="text/javascript">
+        // Define the extension first
+        const ImageUploadExtension = {
+            name: 'ImageUpload',
+            type: 'response',
+            match: ({ trace }) => {
+                console.log('Checking trace:', trace);
+                return trace?.payload?.type === 'ext_image_upload';
+            },
+            render: ({ trace, element }) => {
+                console.log('Rendering image upload...');
+                const uploadContainer = document.createElement('div');
+                uploadContainer.innerHTML = `
+                    <div style="padding: 10px;">
+                        <form id="imageUploadForm">
+                            <input 
+                                type="file" 
+                                id="imageInput"
+                                name="imageInput"
+                                accept="image/*"
+                                aria-label="Choose an image to upload"
+                            >
+                            <button 
+                                type="button" 
+                                id="uploadButton"
+                                style="display: none;"
+                                aria-label="Upload selected image"
+                            >
+                                Upload
+                            </button>
+                        </form>
+                    </div>
+                `;
+                
+                const fileInput = uploadContainer.querySelector('#imageInput');
+                const uploadButton = uploadContainer.querySelector('#uploadButton');
+                
+                fileInput.onchange = () => {
+                    if (fileInput.files.length > 0) {
+                        uploadButton.style.display = 'block';
+                    }
+                };
+                
+                uploadButton.onclick = () => {
+                    const file = fileInput.files[0];
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        window.voiceflow.chat.interact({
+                            type: 'complete',
+                            payload: {
+                                base64: e.target.result,
+                                name: file.name,
+                                type: file.type
+                            }
+                        });
+                    };
+                    reader.readAsDataURL(file);
+                };
+                
+                element.appendChild(uploadContainer);
+            }
+        };
+
+        // Load Voiceflow
         (function(d, t) {
             var v = d.createElement(t), s = d.getElementsByTagName(t)[0];
             v.onload = function() {
@@ -20,9 +80,8 @@
                     url: 'https://general-runtime.voiceflow.com',
                     versionID: 'production',
                     extend: (runtime) => {
-                        console.log('Registering ImageUploadExtension');
+                        console.log('Adding extension...');
                         runtime.addExtension(ImageUploadExtension);
-                        console.log('Extension registered');
                     }
                 });
             }
