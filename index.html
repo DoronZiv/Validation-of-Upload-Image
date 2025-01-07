@@ -14,7 +14,15 @@
             type: 'response',
             match: ({ trace }) => {
                 console.log('Checking trace:', trace);
-                return trace?.payload?.type === 'ext_image_upload';
+                // Check all possible ways the custom component might be identified
+                const isMatch = 
+                    trace?.type === 'ext_image_upload' ||
+                    trace?.payload?.type === 'ext_image_upload' ||
+                    trace?.payload?.name === 'ext_image_upload' ||
+                    trace?.payload?.component?.type === 'ext_image_upload' ||
+                    trace?.payload?.component?.name === 'ext_image_upload';
+                console.log('Is match?', isMatch);
+                return isMatch;
             },
             render: ({ trace, element }) => {
                 console.log('Rendering image upload...');
@@ -82,6 +90,7 @@
                     extend: (runtime) => {
                         console.log('Adding extension...');
                         runtime.addExtension(ImageUploadExtension);
+                        console.log('Extension added successfully');
                     }
                 });
             }
