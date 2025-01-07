@@ -2,10 +2,12 @@ const ImageUploadExtension = {
   name: 'ImageUpload',
   type: 'response',
   match: ({ trace }) => {
-    console.log('Trace:', trace);
-    return trace?.type === 'ext_image_upload' || 
-           trace?.payload?.name === 'ext_image_upload' ||
-           trace?.payload?.type === 'ext_image_upload';
+    console.log('Checking trace:', trace);
+    const isMatch = trace?.type === 'ext_image_upload' || 
+                   trace?.payload?.name === 'ext_image_upload' ||
+                   trace?.payload?.type === 'ext_image_upload';
+    console.log('Is match?', isMatch);
+    return isMatch;
   },
   render: ({ trace, element }) => {
     const uploadContainer = document.createElement('div');
