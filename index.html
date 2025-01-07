@@ -13,20 +13,11 @@
             name: 'ImageUpload',
             type: 'response',
             match: ({ trace }) => {
-                // Log the entire trace object to see its structure
                 console.log('Full trace object:', JSON.stringify(trace, null, 2));
                 
-                // Log each property we're checking
-                console.log('trace.type:', trace?.type);
-                console.log('trace.payload?.type:', trace?.payload?.type);
-                console.log('trace.payload?.name:', trace?.payload?.name);
-                console.log('trace.payload?.component?.type:', trace?.payload?.component?.type);
-                
-                const isMatch = 
-                    trace?.type === 'ext_image_upload' ||
-                    trace?.payload?.type === 'ext_image_upload' ||
-                    trace?.payload?.name === 'ext_image_upload' ||
-                    trace?.payload?.component?.type === 'ext_image_upload';
+                // Match on custom command type
+                const isMatch = trace?.type === 'custom' && 
+                              trace?.payload?.command === 'image_upload';
                 
                 console.log('Is match?', isMatch);
                 return isMatch;
@@ -83,9 +74,6 @@
                         console.log('Adding extension...');
                         runtime.addExtension(ImageUploadExtension);
                         console.log('Extension added successfully');
-                        
-                        // Log available extensions
-                        console.log('Available extensions:', runtime.getExtensions());
                     }
                 });
             }
