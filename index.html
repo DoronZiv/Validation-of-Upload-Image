@@ -3,22 +3,196 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Voiceflow Chat with Image Upload</title>
+    <title>Voiceflow Chatbot</title>
+    <link rel="icon" type="image/x-icon" href="data:image/x-icon;,">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            font-family: Arial, sans-serif;
+        }
+        
+        header {
+            background-color: #f8f9fa;
+            padding: 1rem;
+            text-align: center;
+        }
+
+        main {
+            flex: 1;
+            padding: 2rem;
+        }
+    </style>
 </head>
 <body>
-    <!-- Load extensions.js first -->
-    <script src="extensions.js"></script>
+    <header>
+        <h1>Welcome to My Chatbot</h1>
+    </header>
+    
+    <main>
+        <p>The chatbot will appear in the bottom right corner.</p>
+    </main>
 
-    <!-- Voiceflow Chat Widget -->
+    <!-- Google Drive API Scripts -->
+    <script src="https://apis.google.com/js/api.js"></script>
+    <script src="https://accounts.google.com/gsi/client"></script>
+
+    <!-- Voiceflow Chatbot Widget -->
     <script type="text/javascript">
+        const ImageUploadExtension = {
+            name: 'ImageUpload',
+            type: 'response',
+            match: ({ trace }) =>
+                trace.type === 'ext_image_upload' || trace.payload.name === 'ext_image_upload',
+            render: ({ trace, element }) => {
+                const fileUploadContainer = document.createElement('div');
+                fileUploadContainer.innerHTML = `
+                    <style>
+                        .my-file-upload {
+                            border: 2px dashed rgba(46, 110, 225, 0.3);
+                            padding: 20px;
+                            text-align: center;
+                            cursor: pointer;
+                        }
+                    </style>
+                    <div class='my-file-upload'>העלאת קובץ כאן</div>
+                    <input type='file' style='display: none;' accept="image/jpeg,image/png,image/gif">
+                `;
+
+                const fileInput = fileUploadContainer.querySelector('input[type=file]');
+                const fileUploadBox = fileUploadContainer.querySelector('.my-file-upload');
+
+                fileUploadBox.addEventListener('click', function () {
+                    fileInput.click();
+                });
+
+                fileInput.addEventListener('change', async function() {
+                    const file = this.files[0];
+                    if (!file) return;
+
+                    // Check file type
+                    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
+                    if (!allowedTypes.includes(file.type)) {
+                        alert('נא להעלות קבצי תמונה בלבד (JPEG, PNG, GIF)');
+                        return;
+                    }
+
+                    // Check file size (5MB = 5 * 1024 * 1024 bytes)
+                    const MAX_SIZE = 5 * 1024 * 1024;
+                    if (file.size > MAX_SIZE) {
+                        alert('גודל הקובץ חייב להיות פחות מ-5MB');
+                        return;
+                    }
+
+                    fileUploadContainer.innerHTML = `<img src="https://s3.amazonaws.com/com.voiceflow.studio/share/upload/upload.gif" alt="Upload" width="50" height="50">`;
+
+                    try {
+                        // Ensure user is authenticated
+                        if (!gapi.auth2.getAuthInstance().isSignedIn.get()) {
+                            await gapi.auth2.getAuthInstance().signIn();
+                        }
+
+                        const metadata = {
+                            name: file.name,
+                            mimeType: file.type,
+                            size: file.size,
+                            description: `File size: ${(file.size / 1024 / 1024).toFixed(2)}MB`
+                        };
+
+                        const accessToken = gapi.auth.getToken().access_token;
+                        const form = new FormData();
+                        form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+                        form.append('file', file);
+
+                        const response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${accessToken}`
+                            },
+                            body: form
+                        });
+
+                        if (!response.ok) throw new Error('Upload failed');
+                        const result = await response.json();
+
+                        // Make file publicly accessible
+                        await gapi.client.drive.permissions.create({
+                            fileId: result.id,
+                            resource: {
+                                role: 'reader',
+                                type: 'anyone'
+                            }
+                        });
+
+                        fileUploadContainer.innerHTML = '<img src="https://s3.amazonaws.com/com.voiceflow.studio/share/check/check.gif" alt="Done" width="50" height="50">';
+
+                        window.voiceflow.chat.interact({
+                            type: 'complete',
+                            payload: {
+                                file: `https://drive.google.com/uc?id=${result.id}`
+                            }
+                        });
+
+                    } catch (error) {
+                        console.error('Error:', error);
+                        fileUploadContainer.innerHTML = `<div>שגיאה: ${error.message || 'ההעלאה נכשלה'}</div>`;
+                        setTimeout(() => {
+                            fileUploadContainer.innerHTML = `
+                                <div class='my-file-upload'>העלאת קובץ כאן</div>
+                                <input type='file' style='display: none;' accept="image/jpeg,image/png,image/gif">
+                            `;
+                        }, 3000);
+                    }
+                });
+
+                element.appendChild(fileUploadContainer);
+            },
+        };
+
+        // Initialize Google Drive API
+        const CLIENT_ID = '100529350379-dme4nishb2trjc1lrf36i0o8bm353me9.apps.googleusercontent.com';
+        const SCOPES = 'https://www.googleapis.com/auth/drive.file';
+
+        async function initializeGoogleDrive() {
+            try {
+                await gapi.client.init({
+                    clientId: CLIENT_ID,
+                    scope: SCOPES,
+                    discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest']
+                });
+                // Sign in the user immediately
+                if (!gapi.auth2.getAuthInstance().isSignedIn.get()) {
+                    await gapi.auth2.getAuthInstance().signIn();
+                }
+            } catch (error) {
+                console.error('Google Drive API initialization failed:', error);
+            }
+        }
+
+        // Load the Google Drive API
+        gapi.load('client:auth2', initializeGoogleDrive);
+
+        // Initialize Voiceflow Chat
         (function(d, t) {
             var v = d.createElement(t), s = d.getElementsByTagName(t)[0];
             v.onload = function() {
                 window.voiceflow.chat.load({
                     verify: { projectID: '674ffbb4f8ed29bcbd9e2182' },
                     url: 'https://general-runtime.voiceflow.com',
-                    versionID: 'production'
+                    versionID: 'production',
+                    autoOpen: true,
+                    extensions: [ImageUploadExtension]
                 });
+                
+                // Add a small delay before trying to open the chat
+                setTimeout(() => {
+                    if (window.voiceflow && window.voiceflow.chat) {
+                        window.voiceflow.chat.open();
+                    }
+                }, 1000);
             }
             v.src = "https://cdn.voiceflow.com/widget/bundle.mjs"; 
             v.type = "text/javascript"; 
